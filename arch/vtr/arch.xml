@@ -1,0 +1,350 @@
+<!--
+Generated from /home/egor/proj/fpga/arch/params.cfg parameters file
+--><architecture>
+
+  <models>
+      <model name="fpga_memory">
+      <input_ports>
+        <port name="clk_i" is_clock="1"/>
+        <port name="ce_a_i" clock="clk_i"/>
+        <port name="we_b_i" clock="clk_i"/>
+        <port name="addr_a_i" clock="clk_i"/>
+        <port name="addr_b_i" clock="clk_i"/>
+        <port name="data_b_i" clock="clk_i"/>
+      </input_ports>
+      <output_ports>
+        <port name="data_a_o" clock="clk_i"/>
+      </output_ports>
+    </model>
+  </models>
+  <!-- ODIN II specific config ends -->
+
+  <!-- Physical descriptions begin -->
+  <layout>
+    <fixed_layout name="fpga_layout" width="12" height="13">
+        <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
+        <perimeter type="io" priority="100"/>
+        <corners type="EMPTY" priority="101"/>
+        <!--Fill with 'fpga_logic_block'-->
+        <fill type="fpga_logic_block" priority="10"/>
+        <col type="fpga_memory_blck" startx="400" starty="1" repeatx="5" priority="20"/> <!-- !! ugly name to be similar in length to fpga_logic_block !! -->
+    </fixed_layout>
+  </layout>
+  <device>
+    <sizing R_minW_nmos="4220.930176" R_minW_pmos="11207.599609"/>
+    <area grid_logic_tile_area="2229.320068"/>
+    <chan_width_distr>
+      <x distr="uniform" peak="1.000000"/>
+      <y distr="uniform" peak="1.000000"/>
+    </chan_width_distr>
+    <switch_block type="wilton" fs="3"/>
+    <connection_block input_switch_name="ipin_cblock"/>
+  </device>
+  <switchlist>
+    <switch type="mux" name="0" R="0" Cout="0." Cin="0.000000e+00" Tdel="1050e-12" mux_trans_size="1" buf_size="auto"/>
+    <switch type="mux" name="ipin_cblock" R="0" Cout="0." Cin="0.000000e+00" Tdel="350e-12" mux_trans_size="1" buf_size="auto"/>
+  </switchlist>
+  <segmentlist>
+    <segment freq="1.000000" length="1" type="unidir" Rmetal="0.000000" Cmetal="0.000000e+00">
+    <mux name="0"/>
+    <sb type="pattern">1 1</sb>
+    <cb type="pattern">1</cb>
+    </segment>
+  </segmentlist>
+
+  <complexblocklist>
+
+    <!-- Define I/O pads begin -->
+    <!-- Capacity is a unique property of I/Os, it is the maximum number of I/Os that can be placed at the same (X,Y) location on the FPGA -->
+    <pb_type name="io" capacity="8">
+      <input name="outpad" num_pins="1"/>
+      <output name="inpad" num_pins="1"/>
+      <clock name="clock" num_pins="1"/>
+
+      <!-- IOs can operate as either inputs or outputs. -->
+      <mode name="inpad">
+        <pb_type name="inpad" blif_model=".input" num_pb="1">
+          <output name="inpad" num_pins="1"/>
+        </pb_type>
+        <interconnect>
+          <direct name="inpad" input="inpad.inpad" output="io.inpad">
+            <delay_constant max="1000e-12" in_port="inpad.inpad" out_port="io.inpad"/>
+          </direct>
+        </interconnect>
+
+      </mode>
+      <mode name="outpad">
+        <pb_type name="outpad" blif_model=".output" num_pb="1">
+          <input name="outpad" num_pins="1"/>
+        </pb_type>
+        <interconnect>
+          <direct name="outpad" input="io.outpad" output="outpad.outpad">
+            <delay_constant max="2100e-12" in_port="io.outpad" out_port="outpad.outpad"/>
+          </direct>
+        </interconnect>
+      </mode>
+
+      <!-- Every input pin is driven by 15% of the tracks in a channel, every output pin is driven by 10% of the tracks in a channel -->
+      <fc in_type="frac" in_val="0.125" out_type="frac" out_val="0.125"/>
+
+      <!-- IOs go on the periphery of the FPGA, for consistency,
+          make it physically equivalent on all sides so that only one definition of I/Os is needed.
+          If I do not make a physically equivalent definition, then I need to define 4 different I/Os, one for each side of the FPGA
+        -->
+      <pinlocations pattern="custom">
+        <loc side="left">io.outpad io.inpad io.clock</loc>
+        <loc side="top">io.outpad io.inpad io.clock</loc>
+        <loc side="right">io.outpad io.inpad io.clock</loc>
+        <loc side="bottom">io.outpad io.inpad io.clock</loc>
+      </pinlocations>
+
+      <!-- Place I/Os on the sides of the FPGA -->
+      <power method="ignore"/>
+    </pb_type>
+    <!-- Define I/O pads ends -->
+
+    <!-- Define general purpose logic block (CLB) begin -->
+    <pb_type name="fpga_logic_block">
+      <input name="logic_i" num_pins="32" equivalent="none"/>   <!-- ?equivalent? -->
+      <output name="logic_o" num_pins="8" equivalent="none"/>
+      <clock name="clk" num_pins="1"/>
+
+      <!-- Describe basic logic element. -->
+      <pb_type name="fpga_logic_cell" num_pb="8">
+        <input name="in" num_pins="4"/>
+        <output name="out" num_pins="1"/>
+        <clock name="clk" num_pins="1"/>
+        <!-- LUT mode definition begin -->
+        <mode name="n1_lut4">
+            <!-- Define LUT -->
+            <pb_type name="fpga_lut" blif_model=".names" num_pb="1" class="lut">
+              <input name="in" num_pins="4" port_class="lut_in"/>
+              <output name="out" num_pins="1" port_class="lut_out"/>
+              <!-- LUT timing using delay matrix -->
+              <delay_matrix type="max" in_port="fpga_lut.in" out_port="fpga_lut.out">
+                1200e-12
+                1800e-12
+                4800e-12
+                6000e-12
+
+              </delay_matrix>
+            </pb_type>
+
+            <!-- Define flip-flop -->
+            <pb_type name="fpga_register" blif_model=".latch" num_pb="1" class="flipflop">
+              <input name="D" num_pins="1" port_class="D"/>
+              <output name="Q" num_pins="1" port_class="Q"/>
+              <clock name="clk" num_pins="1" port_class="clock"/>
+              <T_setup value="120e-12" port="fpga_register.D" clock="clk"/>
+              <T_clock_to_Q max="400e-12" port="fpga_register.Q" clock="clk"/>
+            </pb_type>
+
+            <interconnect>
+              <direct name="direct1" input="fpga_logic_cell.in" output="fpga_lut[0].in"/>
+              <direct name="direct2" input="fpga_lut.out" output="fpga_register.D">
+                <!-- Advanced user option that tells CAD tool to find LUT+FF pairs in netlist -->
+                <pack_pattern name="ble" in_port="fpga_lut.out" out_port="fpga_register.D"/>
+              </direct>
+              <direct name="direct3" input="fpga_logic_cell.clk" output="fpga_register.clk"/>
+              <mux name="mux1" input="fpga_register.Q fpga_lut.out" output="fpga_logic_cell.out">
+                <delay_constant max="800e-12" in_port="fpga_register.Q fpga_lut.out" out_port="fpga_logic_cell.out"/>
+              </mux>
+            </interconnect>
+        </mode>
+        <!-- 4-LUT mode definition end -->
+      </pb_type>
+      <interconnect>
+        <!-- LUT commutation MUX -->
+        <mux name="crossbar_0" input="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[0].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[0].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[0].in[0]"/>
+        </mux>
+        <mux name="crossbar_1" input="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[0].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[0].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[0].in[1]"/>
+        </mux>
+        <mux name="crossbar_2" input="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[0].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[0].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[0].in[2]"/>
+        </mux>
+        <mux name="crossbar_3" input="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[0].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[0].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[0].in[3]"/>
+        </mux>
+        <mux name="crossbar_4" input="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[1].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[1].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[1].in[0]"/>
+        </mux>
+        <mux name="crossbar_5" input="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[1].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[1].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[1].in[1]"/>
+        </mux>
+        <mux name="crossbar_6" input="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[1].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[1].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[1].in[2]"/>
+        </mux>
+        <mux name="crossbar_7" input="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[1].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[1].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[1].in[3]"/>
+        </mux>
+        <mux name="crossbar_8" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[2].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[2].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[2].in[0]"/>
+        </mux>
+        <mux name="crossbar_9" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[2].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[2].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[2].in[1]"/>
+        </mux>
+        <mux name="crossbar_10" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[2].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[2].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[2].in[2]"/>
+        </mux>
+        <mux name="crossbar_11" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[2].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[2].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[2].in[3]"/>
+        </mux>
+        <mux name="crossbar_12" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[3].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[3].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[3].in[0]"/>
+        </mux>
+        <mux name="crossbar_13" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[3].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[3].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[3].in[1]"/>
+        </mux>
+        <mux name="crossbar_14" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[3].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[3].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[3].in[2]"/>
+        </mux>
+        <mux name="crossbar_15" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[3].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[3].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[3].in[3]"/>
+        </mux>
+        <mux name="crossbar_16" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[4].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[4].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[4].in[0]"/>
+        </mux>
+        <mux name="crossbar_17" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[4].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[4].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[4].in[1]"/>
+        </mux>
+        <mux name="crossbar_18" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[4].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[4].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[4].in[2]"/>
+        </mux>
+        <mux name="crossbar_19" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[4].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[4].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[5].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[4].in[3]"/>
+        </mux>
+        <mux name="crossbar_20" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[5].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[5].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[5].in[0]"/>
+        </mux>
+        <mux name="crossbar_21" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[5].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[5].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[5].in[1]"/>
+        </mux>
+        <mux name="crossbar_22" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[5].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[5].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[5].in[2]"/>
+        </mux>
+        <mux name="crossbar_23" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[5].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[5].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[6].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[5].in[3]"/>
+        </mux>
+        <mux name="crossbar_24" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[6].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[6].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[6].in[0]"/>
+        </mux>
+        <mux name="crossbar_25" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[6].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[6].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[6].in[1]"/>
+        </mux>
+        <mux name="crossbar_26" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[6].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[6].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[6].in[2]"/>
+        </mux>
+        <mux name="crossbar_27" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[6].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[6].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[7].out " out_port="fpga_logic_cell[6].in[3]"/>
+        </mux>
+        <mux name="crossbar_28" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out  fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " output="fpga_logic_cell[7].in[0]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[0] fpga_logic_block.logic_i[1] fpga_logic_block.logic_i[2] fpga_logic_block.logic_i[3] fpga_logic_block.logic_i[4] fpga_logic_block.logic_i[5] fpga_logic_block.logic_i[6] fpga_logic_block.logic_i[7] " out_port="fpga_logic_cell[7].in[0]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out " out_port="fpga_logic_cell[7].in[0]"/>
+        </mux>
+        <mux name="crossbar_29" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out  fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " output="fpga_logic_cell[7].in[1]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[8] fpga_logic_block.logic_i[9] fpga_logic_block.logic_i[10] fpga_logic_block.logic_i[11] fpga_logic_block.logic_i[12] fpga_logic_block.logic_i[13] fpga_logic_block.logic_i[14] fpga_logic_block.logic_i[15] " out_port="fpga_logic_cell[7].in[1]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out " out_port="fpga_logic_cell[7].in[1]"/>
+        </mux>
+        <mux name="crossbar_30" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out  fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " output="fpga_logic_cell[7].in[2]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[16] fpga_logic_block.logic_i[17] fpga_logic_block.logic_i[18] fpga_logic_block.logic_i[19] fpga_logic_block.logic_i[20] fpga_logic_block.logic_i[21] fpga_logic_block.logic_i[22] fpga_logic_block.logic_i[23] " out_port="fpga_logic_cell[7].in[2]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out " out_port="fpga_logic_cell[7].in[2]"/>
+        </mux>
+        <mux name="crossbar_31" input="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out  fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " output="fpga_logic_cell[7].in[3]">
+            <delay_constant max="2200e-12" in_port="fpga_logic_block.logic_i[24] fpga_logic_block.logic_i[25] fpga_logic_block.logic_i[26] fpga_logic_block.logic_i[27] fpga_logic_block.logic_i[28] fpga_logic_block.logic_i[29] fpga_logic_block.logic_i[30] fpga_logic_block.logic_i[31] " out_port="fpga_logic_cell[7].in[3]"/> <!-- block_in_mux included not here but in ipin_cblock -->
+            <delay_constant max="2200e-12" in_port="fpga_logic_cell[0].out fpga_logic_cell[1].out fpga_logic_cell[2].out fpga_logic_cell[3].out fpga_logic_cell[4].out fpga_logic_cell[5].out fpga_logic_cell[6].out " out_port="fpga_logic_cell[7].in[3]"/>
+        </mux>
+        
+        <complete name="clks" input="fpga_logic_block.clk" output="fpga_logic_cell[7:0].clk">
+        </complete>
+        <direct name="clbouts1" input="fpga_logic_cell[7:0].out" output="fpga_logic_block.logic_o">
+            <!-- ??probably where is a better place for LB -> routing node delay somewhere?? -->
+            <delay_constant max="50e-12" in_port="fpga_logic_cell[7:0].out" out_port="fpga_logic_block.logic_o"/>
+        </direct>
+      </interconnect>
+
+      <!-- Every input pin is driven by 1/BLOCK_IN_MUXES_COEF of the tracks in a channel, every output pin is driven by 100% of the tracks in a channel -->
+      <fc in_type="frac" in_val="0.125" out_type="frac" out_val="1"/>
+
+      <pinlocations pattern="spread"/>
+
+      <!-- Place this general purpose logic block in any unspecified column -->
+      </pb_type>
+    <!-- Define general purpose logic block (CLB) ends -->
+
+    <pb_type name="fpga_memory_blck" height="1">
+        <clock name="clk_i" num_pins="1"/>
+
+        <input name="logic_i" num_pins="32"/>
+        <output name="logic_o" num_pins="8"/>
+
+        <mode name="mem_128x8">
+            <pb_type name="mem_128x8" blif_model=".subckt fpga_memory" num_pb="1">
+                <clock name="clk_i" num_pins="1" port_class="clock"/>
+
+                <input name="ce_a_i" num_pins="1" port_class="write_en"/>
+                <input name="addr_a_i" num_pins="7" port_class="address1"/>
+                <output name="data_a_o" num_pins="8" port_class="data_out1"/>
+
+                <input name="we_b_i" num_pins="1" port_class="write_en2"/>
+                <input name="addr_b_i" num_pins="7" port_class="address2"/>
+                <input name="data_b_i" num_pins="8" port_class="data_in2"/>
+
+                <T_setup value="2.448e-10" port="mem_128x8.addr_a_i" clock="clk_i"/>
+                <T_clock_to_Q max="2.448e-10" port="mem_128x8.data_a_o" clock="clk_i"/>
+                <T_setup value="1.852e-9" port="mem_128x8.ce_a_i" clock="clk_i"/>
+
+                <T_setup value="1.852e-9" port="mem_128x8.addr_b_i" clock="clk_i"/>
+                <T_setup value="1.852e-9" port="mem_128x8.data_b_i" clock="clk_i"/>
+                <T_setup value="1.852e-9" port="mem_128x8.we_b_i" clock="clk_i"/>
+            </pb_type>
+            <interconnect>
+                <direct name="ce_a_i" input="fpga_memory_blck.logic_i[0]" output="mem_128x8.ce_a_i"/>
+                <direct name="addr_a_i" input="fpga_memory_blck.logic_i[7:1]" output="mem_128x8.addr_a_i"/>
+                <direct name="data_a_o" input="mem_128x8.data_a_o[7:0]" output="fpga_memory_blck.logic_o"/>
+
+                <direct name="we_b_i" input="fpga_memory_blck.logic_i[8]" output="mem_128x8.we_b_i"/>
+                <direct name="addr_b_i" input="fpga_memory_blck.logic_i[15:9]" output="mem_128x8.addr_b_i"/>
+                <direct name="data_b_i" input="fpga_memory_blck.logic_i[23:16]" output="mem_128x8.data_b_i"/>
+
+                <direct name="clk_i" input="fpga_memory_blck.clk_i" output="mem_128x8.clk_i"/>
+            </interconnect>
+        </mode>
+
+        <fc in_type="frac" in_val="0.125" out_type="frac" out_val="1"/>
+        <pinlocations pattern="spread"/>
+    </pb_type>
+
+  </complexblocklist>
+</architecture>
+
+
