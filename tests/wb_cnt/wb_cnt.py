@@ -6,15 +6,9 @@ from cocotbext.wishbone.driver import WBOp
 
 from wishbone_loader_cocotb import *
 
-USER_WB_BASEADDR    = 0x30F00000
+USER_WB_BASEADDR    = 0x30020000
 
-BLOCK_CFG_ADDR      = 0x30100000
-VRNODE_CFG_ADDR     = 0x30200000
-HRNODE_CFG_ADDR     = 0x30300000
-CLK_CFG_ADDR        = 0x30E00000
-RST_CFG_ADDR        = 0x30A00000
-
-CNT_ADDR            = 0x30F000F0
+CNT_ADDR            = USER_WB_BASEADDR + 0xF0
 
 class WishboneCntTest:
     def __init__(self, wb):

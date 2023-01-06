@@ -8,7 +8,7 @@ library ieee;
 entity wb_cnt is
     generic (
         CNT_LIM : integer := 127;
-        WB_ADDR : std_logic_vector(31 downto 0) := X"30F0_00F0"
+        WB_ADDR : std_logic_vector(7 downto 0) := X"F0"
     );
     port (
         wb_clk_i        : in std_logic;
@@ -17,7 +17,7 @@ entity wb_cnt is
         wbs_cyc_i       : in std_logic;
         wbs_we_i        : in std_logic;
         wbs_dat_i       : in std_logic_vector(31 downto 0);
-        wbs_adr_i       : in std_logic_vector(31 downto 0);
+        wbs_adr_i       : in std_logic_vector(7 downto 0);
         wbs_ack_o       : out std_logic;
         wbs_dat_o       : out std_logic_vector(31 downto 0)
     );
@@ -37,7 +37,7 @@ begin
             wbs_ack_o <= '0';
         else
             wbs_ack_o <= '1';
-            if wbs_cyc_i = '1' and wbs_stb_i = '1' and wbs_ack_o = '1' and wbs_adr_i = WB_ADDR then
+            if wbs_cyc_i = '1' and wbs_stb_i = '1' and wbs_ack_o = '1' and wbs_adr_i(7 downto 0) = WB_ADDR(7 downto 0) then
                 if wbs_we_i = '1' then
                     if cnt = CNT_LIM then
                         cnt <= 0;

@@ -28,7 +28,8 @@ async def run_test(dut):
     wb = WishboneRegs(dut, USER_WB_BASEADDR)
     loader = WishboneCfgLoader(wb)
     test = WishboneCntTest(wb)
-
+    io_in = dut.io_in
+    io_in[37] = 0
     # ~ vccd1.value = 1
     # ~ vccd2.value = 0
     # ~ vdda1.value = 1
@@ -47,15 +48,23 @@ async def run_test(dut):
     # Reset FPGA fabric
     await loader.fabric_reset() 
     
+    await cocotb.triggers.ClockCycles(wb.clk, 10)
+    
     # Load FPGA firmware
-    await loader.load_fw("firmware.bit")
-
+    await loader.load_fw_efuse("firmware.bit")
+    
+    io_in[37].value = 1
+    
+    await cocotb.triggers.ClockCycles(wb.clk, 100000)
+    
+    io_in[37].value = 0
+    
     # Launch FPGA fabric
-    await loader.fabric_set()        
+    # await loader.fabric_set()        
     
-    dut.log.info("Firmware loading finished!")
+    # dut.log.info("Firmware loading finished!")
     
-    await loader.wb_reset()
+    # await loader.wb_reset()
     
     # vccd1 = dut.vccd1
     # vccd2 = dut.vccd2

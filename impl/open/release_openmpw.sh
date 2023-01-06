@@ -1,18 +1,39 @@
 #!/usr/bin/env bash
 
 set -e
+shopt -s nullglob
 
-OPENMPW_REPO=$HOME/proj/ariel_fpga_openmpw
 RUN=$1
+OPENMPW_REPO=$2
+MACRO_RUN=$3
+
 PRJ=user_project_wrapper
-PRJSRC=designs/$PRJ
-NETLIST="$RUN/results/routing/$PRJ".powered.v
-RESULT=$RUN/results/finishing/$PRJ
+PRJSRC="designs/$PRJ"
+RESULT="$RUN/results/final"
+
+PRJMACRO=$(basename $MACRO_RUN)
+PRJMACROSRC="designs/$PRJMACRO"
+MACRORESULT="$MACRO_RUN/results/final"
+
+NETLIST="$RESULT/verilog/gl/$PRJ".v
+GDS="$RESULT/gds/$PRJ".gds
+LEF="$RESULT/lef/$PRJ".lef
+MAG="$RESULT/mag/$PRJ".mag
+DEF="$RESULT/def/$PRJ".def
+SDF="$RESULT/sdf/$PRJ".sdf
+
+MACRONETLIST="$MACRORESULT/verilog/gl/$PRJMACRO".v
+MACROLEF="$MACRORESULT/lef/$PRJMACRO".lef
+MACRODEF="$MACRORESULT/def/$PRJMACRO".def
+MACROSDF="$MACRORESULT/sdf/$PRJMACRO".sdf
+MACROGDS="$MACRORESULT/gds/$PRJMACRO".gds
+
 GZIP="gzip --keep --best -c"
 
 # remove files which could be unpacked by precheck
 echo "Cleaning up..."
-rm -f $OPENMPW_REPO/gds/$PRJ.gds $OPENMPW_REPO/mag/$PRJ.mag $OPENMPW_REPO/verilog/gl/$PRJ.v
+rm -f $OPENMPW_REPO/gds/$PRJ.gds $OPENMPW_REPO/mag/$PRJ.mag $OPENMPW_REPO/verilog/gl/$PRJ.v \
+    $OPENMPW_REPO/verilog/gl/$PRJMACRO.v $OPENMPW_REPO/def/$PRJMACRO.def $OPENMPW_REPO/sdf/$PRJMACRO.sdf $OPENMPW_REPO/def/$PRJ.def $OPENMPW_REPO/sdf/$PRJ.sdf
 
 # copy project sources
 echo "Copying sources..."
@@ -21,27 +42,30 @@ cp $PRJSRC/config.tcl $OPENMPW_REPO/openlane/
 cp $PRJSRC/*.cfg $OPENMPW_REPO/openlane/
 cp $PRJSRC/*.sdc $OPENMPW_REPO/openlane/
 
-# patch netlist to add unused power ports :(
-set +e
-grep 'input vccd2' $NETLIST > /dev/null
-PATCH_NEEDED=$?
-set -e
-if [ $PATCH_NEEDED != 0 ]; then
-    echo "Patching netlist $NETLIST"
-    sed -i '0,/vccd1,/s//vccd1, vccd2, vdda1, vdda2, vssa1, vssa2, vssd2,/g' $NETLIST
-    sed -i '0,/wire vccd2;/s//input vccd2;/g' $NETLIST
-    sed -i '0,/wire vdda1;/s//input vdda1;/g' $NETLIST
-    sed -i '0,/wire vdda2;/s//input vdda2;/g' $NETLIST
-    sed -i '0,/wire vssa1;/s//input vssa1;/g' $NETLIST
-    sed -i '0,/wire vssa2;/s//input vssa2;/g' $NETLIST
-    sed -i '0,/wire vssd2;/s//input vssd2;/g' $NETLIST
-else
-    echo "Netlist already patched"
+# copy FPGA block sources
+if [ ! -z "$MACRO_RUN" ]; then
+    echo "Copying macro sources..."
+    mkdir -p $OPENMPW_REPO/verilog/rtl/$PRJMACRO
+    mkdir -p $OPENMPW_REPO/openlane/$PRJMACRO
+    cp $PRJMACROSRC/*.v $MACRO_RUN/*.v $OPENMPW_REPO/verilog/rtl/$PRJMACRO
+    [ -f $PRJMACROSRC/config.tcl ] && cp $PRJMACROSRC/config.tcl $OPENMPW_REPO/openlane/$PRJMACRO
+    [ -f $PRJMACROSRC/config.tcl ] && cp $PRJMACROSRC/*.cfg $OPENMPW_REPO/openlane/$PRJMACRO
+    [ -f $PRJMACROSRC/config.tcl ] && cp $PRJMACROSRC/*.sdc $OPENMPW_REPO/openlane/$PRJMACRO
+    
+    echo "Gziping macro implementation products..."
+    $GZIP $MACRONETLIST > $OPENMPW_REPO/verilog/gl/$PRJMACRO.v.gz 
+    cp $MACROLEF $OPENMPW_REPO/lef/
+    $GZIP $MACRODEF > $OPENMPW_REPO/def/$PRJMACRO.def.gz 
+    $GZIP $MACROSDF > $OPENMPW_REPO/sdf/$PRJMACRO.sdf.gz 
+    $GZIP $MACROGDS > $OPENMPW_REPO/gds/$PRJMACRO.gds.gz 
 fi
 
 # copy implementation products
 echo "Gzipping implementation products..."
-$GZIP $RESULT.gds > $OPENMPW_REPO/gds/$PRJ.gds.gz 
-$GZIP $RESULT.mag > $OPENMPW_REPO/mag/$PRJ.mag.gz
-$GZIP $NETLIST > $OPENMPW_REPO/verilog/gl/$PRJ.v.gz
-cp $RESULT.lef $OPENMPW_REPO/lef/
+$GZIP $NETLIST > $OPENMPW_REPO/verilog/gl/$PRJ.v.gz &
+#$GZIP $MAG > $OPENMPW_REPO/mag/$PRJ.mag.gz &
+$GZIP $DEF > $OPENMPW_REPO/def/$PRJ.def.gz &
+$GZIP $SDF > $OPENMPW_REPO/sdf/$PRJ.sdf.gz &
+$GZIP $GDS > $OPENMPW_REPO/gds/$PRJ.gds.gz 
+cp $LEF $OPENMPW_REPO/lef/
+wait

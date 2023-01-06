@@ -55,10 +55,10 @@ def WriteOpenlaneScript(name, src_list, tech_src_list, vhdl_top=""):
     
     print("#!/bin/sh", file=fd)
     print("set -e\nrm -f fpgalib-*.cf ", file=fd)
-    print("/opt/opencad/bin/yosys -m ghdl -p 'ghdl -fsynopsys --std=08 --work=fpgalib " + srcs + " -e " + vhdl_top +"; hierarchy -check -top " + vhdl_top + "; write_verilog " + OpenlaneDesignsPath(name) + vhdl_top + "_fromvhdl.v'", file=fd)
+    print("yosys -m ghdl -p 'ghdl -fsynopsys --std=08 --work=fpgalib " + srcs + " -e " + vhdl_top +"; hierarchy -check -top " + vhdl_top + "; write_verilog " + OpenlaneDesignsPath(name) + vhdl_top + "_fromvhdl.v'", file=fd)
     if tech_srcs:
         print("cp " + tech_srcs + " " + dp, file=fd)
-    print("$OPENLANE_PATH/flow.tcl -design " + dp, file=fd)
+    print("$OPENLANE_PATH/flow.tcl -ignore_mismatches -design " + dp, file=fd)
     print("exit $? ", file=fd)
 
     fd.close()
@@ -93,10 +93,10 @@ def WriteOpenlaneDesign(name, src_list, tech_src_list, env_vars, pin_cfg, macro_
     env_vars["BASE_SDC_FILE"] = '"' + dp + name + '.sdc"'
     env_vars["FP_PIN_ORDER_CFG"] = '"' + dp + 'pin.cfg"'
 
-    env_vars["SYNTH_DRIVING_CELL"] = '"sky130_fd_sc_hd__buf_1"'
-    env_vars["SYNTH_DRIVING_CELL_PIN"] = '"X"'
+    env_vars["SYNTH_DRIVING_CELL"] = '"gf180mcu_fd_sc_mcu7t5v0__buf_1"'
+    env_vars["SYNTH_DRIVING_CELL_PIN"] = '"Z"'
     
-    env_vars["ROUTING_CORES"] = 10
+    env_vars["ROUTING_CORES"] = 24
     
     env_vars_text = ""
     if ADD_CONFIG_TCL in env_vars:
@@ -171,8 +171,11 @@ def WriteSDC(name, add_sdc, add_clock = []):
 
 TOP_LEVEL = "user_project_wrapper"
 
+EFUSE_DESIGN_NAME = "efuse_ctrl"
+
 LB_TEMPLATE = "ariel_fpga_top_inst.fpga_fabric_inst.struct_blocks_x:{X}.struct_blocks_y:{Y}.struct_block"
 RNODE_TEMPLATE = "ariel_fpga_top_inst.fpga_fabric_inst.{O}_routing_network_x:{X}.{O}_routing_network_y:{Y}.routing_node_{D}" 
+EF_TEMPLATE="ariel_fpga_top_inst.efuse_mem_inst"
 
 RNODE_IN_TEMPLATE   = RNODE_TEMPLATE + ".node.muxes:{T}.bufs:{I}.rnode_in.tech_buf/$BUFIPIN" 
 RNODE_OUTI_TEMPLATE = RNODE_TEMPLATE + ".node.muxes:{T}.rnode_tfinish.tech_buf/$BUFOPIN"
@@ -274,18 +277,22 @@ def GetPinNets(clk):
 def PlaceMacro(name, x, y):
     return name + " " + str(x) + " " + str(y) + " N\n"
 
-LB_OFFSET_X = 120    
-LB_OFFSET_Y = 240     
-LB_SIZE   = 200    
-LB_STEP   = LB_SIZE*1.4
-LB_STEP_Y  = LB_SIZE*1.5
-    
+LB_OFFSET_X = 60    
+LB_OFFSET_Y = 80     
+LB_SIZE   = 300    
+LB_STEP   = LB_SIZE*1.1195
+LB_STEP_Y  = LB_SIZE*1.40
+
+# ~ EF_OFFSET_Y = 336.7
+EF_OFFSET_Y = 561.7
+
 def PlaceFabricMacros():
     pl = ""
     for x in range(1, p.FABRIC_BLOCKS_X+1):
         for y in range(1, p.FABRIC_BLOCKS_Y+1):
             pl += PlaceMacro(LB_TEMPLATE.format(X=x, Y=y), (x-1)*LB_STEP+LB_OFFSET_X, (y-1)*LB_STEP_Y+LB_OFFSET_Y)
-       
+    
+    pl += PlaceMacro(EF_TEMPLATE, p.FABRIC_BLOCKS_X*LB_STEP+LB_OFFSET_X, EF_OFFSET_Y)
     return pl
 
 def FabricOpenlane(partitions):
@@ -297,14 +304,12 @@ def FabricOpenlane(partitions):
     clock_nets += GetPinNets(HRNODE_CFG_CLOCK)
     
     ol_vars = {
-        ADD_CONFIG_TCL : "source $::env(CARAVEL_ROOT)/openlane/user_project_wrapper/fixed_wrapper_cfgs.tcl",
+        ADD_CONFIG_TCL : "source $::env(CARAVEL_UPRJ_ROOT)/openlane/user_project_wrapper/fixed_dont_change/default_wrapper_cfgs.tcl \n source $::env(CARAVEL_UPRJ_ROOT)/openlane/user_project_wrapper/fixed_dont_change/fixed_wrapper_cfgs.tcl",
         "DESIGN_IS_CORE" : 1,
         
         "SYNTH_STRATEGY" : '"AREA 0"',
-        
-        "FP_PDN_CORE_RING" : 1,
-        "FP_PDN_CHECK_NODES" : 0,
-        
+        # "SYNTH_FIXED_NETLIST" : '"/home/egor/proj/fpga/impl/open/designs/user_project_wrapper/runs/RUN_2022.01.06_17.39.18/results/synthesis/user_project_wrapper.v"',
+       
         "CLOCK_PERIOD" : 100,
         "CLOCK_PORT" : '"wb_clk_i"',
         "CLOCK_NET" : '"wb_clk_i"',
@@ -312,43 +317,49 @@ def FabricOpenlane(partitions):
         "PL_MAX_DISPLACEMENT_X" : 3000,
         "PL_MAX_DISPLACEMENT_Y" : 1000,
         
-        "FP_PDN_VOFFSET" : 40,
-        "FP_PDN_HOFFSET" : 40,
-        "FP_PDN_VPITCH" : LB_STEP/4,
-        "FP_PDN_HPITCH" : LB_STEP_Y/8,
         "FP_PDN_AUTO_ADJUST" : 0,
         "FP_PDN_IRDROP" : 0,
+        "FP_PDN_HOFFSET" : 3,
+        "FP_PDN_HORIZONTAL_HALO" : 5,
+        "FP_PDN_VERTICAL_HALO" : 5,
+        
+        "FP_PDN_VPITCH" : 110,
+        "FP_PDN_VSPACING" : 10,
+        "FP_PDN_HSPACING" : 41.9,
+        "FP_PDN_AUTO_ADJUST" : 0,
         
         "PL_TIME_DRIVEN" : 1,
-        "PL_TARGET_DENSITY" : 0.30,
-        "DIODE_INSERTION_STRATEGY" : 0,
+        # ~ "PL_TARGET_DENSITY" : 0.34,
+        "PL_TARGET_DENSITY" : 0.42,
+        # ~ "DIODE_INSERTION_STRATEGY" : 3,
+
         
-        # to meet li1 density
-        "FP_HORIZONTAL_HALO" : 20,
-        "FP_VERTICAL_HALO" : 40,
-        
-        "PL_RESIZER_MAX_WIRE_LENGTH" : 2000.0,
+        # ~ "PL_RESIZER_MAX_WIRE_LENGTH" : 2000.0,
         "PL_RESIZER_ALLOW_SETUP_VIOS" : 1,
-        "PL_RESIZER_HOLD_SLACK_MARGIN" : 0.3,
-        "PL_RESIZER_MAX_SLEW_MARGIN" : 10,
-        "GLB_RESIZER_MAX_SLEW_MARGIN" : 10,
-        "GLB_RESIZER_HOLD_SLACK_MARGIN" : 0.2,
-        "GLB_RESIZER_ALLOW_SETUP_VIOS" : 1,
-        "GLB_RESIZER_TIMING_OPTIMIZATIONS" : 1,
+        # ~ "PL_RESIZER_HOLD_SLACK_MARGIN" : 0.1,
+        # ~ "PL_RESIZER_MAX_SLEW_MARGIN" : 40,
+        # ~ "GLB_RESIZER_MAX_SLEW_MARGIN" : 40,
+        # ~ "GLB_RESIZER_HOLD_SLACK_MARGIN" : 0.1,
+        # ~ "GLB_RESIZER_ALLOW_SETUP_VIOS" : 1,
+        # ~ "GLB_RESIZER_TIMING_OPTIMIZATIONS" : 1,
         
-        "GLB_RT_ADJUSTMENT" : 0.1,
-        "GLB_RT_L2_ADJUSTMENT" : 0.9,
-        "GLB_RT_L3_ADJUSTMENT" : 0.7,
+        "GRT_ALLOW_CONGESTION" : 1,
+        "GRT_ADJUSTMENT" : 0.1,
+        # ~ "GRT_LAYER_ADJUSTMENTS" : "0.6,0.4,0.3,0,0",
         
-        "FP_PDN_MACRO_HOOKS" : '"' + LB_DESIGN_NAME + ' vccd1 vssd1"',
+        # "FP_PDN_MACRO_HOOKS" : '"' + LB_DESIGN_NAME + ' vccd1 vssd1"',
+        # "FP_PDN_MACRO_HOOKS" : '"' + ".*struct_block" + ' vccd1 vssd1"',
         
         # use custom PDN config to skip stripes generation for unused domains
-        "PDN_NO_STRIPE_DOMAINS" : '[list {vccd2} {vdda1} {vdda2}]',
         "PDN_CFG" : '"'+AbsPath('.')+'/pdn_cfg.tcl"',
         
+        "RUN_KLAYOUT_XOR" : 0,
+        
         "VERILOG_FILES_BLACKBOX" : '"'+AbsPath('.')+'/macros.v"',
-        "EXTRA_LEFS" : '"'+AbsPath('.')+'/best/{LB}/results/finishing/{LB}.lef"'.format(LB=LB_DESIGN_NAME),
-        "EXTRA_GDS_FILES" : '"'+AbsPath('.')+'/best/{LB}/results/finishing/{LB}.gds"'.format(LB=LB_DESIGN_NAME)
+        "EXTRA_LEFS" : '"'+AbsPath('.')+'/best/{LB}/results/final/lef/{LB}.lef'.format(LB=LB_DESIGN_NAME) + 
+            ' '+AbsPath('.')+'/best/{EF}/results/final/lef/{EF}.lef"'.format(EF=EFUSE_DESIGN_NAME),
+        "EXTRA_GDS_FILES" : '"'+AbsPath('.')+'/best/{LB}/results/final/gds/{LB}.gds'.format(LB=LB_DESIGN_NAME) + 
+            ' '+AbsPath('.')+'/best/{EF}/results/final/gds/{EF}.gds"'.format(EF=EFUSE_DESIGN_NAME),
     }
     RTL_TECH_PATH = RTL_PATH + "/" + TechDir(p)
     WriteOpenlaneDesign(TOP_LEVEL, PrependPaths(p.src.SRC_LIST_ARIEL, RTL_PATH), PrependPaths(p.src.SRC_LIST_TECH_ARIEL, RTL_TECH_PATH), ol_vars, pins_cfg, macro_cfg, "ariel_fpga_top")
@@ -363,13 +374,15 @@ LB_DESIGN_NAME = "fpga_struct_block"
 LOGIC_CELL_TEMPLATE = "*logic_block*logic_cells*{i}*cell"
 
 LOOPBREAKER_TEMPLATE = LOGIC_CELL_TEMPLATE + ".lut.breaker*loop_breaker.tech_buf"
-LOOPBREAKER_IN_TEMPLATE = LOOPBREAKER_TEMPLATE + "/$BUFIPIN"
-LOOPBREAKER_OUT_TEMPLATE = LOOPBREAKER_TEMPLATE + "/$BUFOPIN"
 
 LUTBUF_IN_TEMPLATE = LOGIC_CELL_TEMPLATE + ".lut.breaker*lut_tfinish.tech_buf/$BUFIPIN"
 LUTBUF_OUT_TEMPLATE = LOGIC_CELL_TEMPLATE + ".lut.breaker*lut_tstart.tech_buf/$BUFOPIN"
+# LUTBUF_IN_TEMPLATE = LOGIC_CELL_TEMPLATE + ".lut.breaker*lut_tfinish.tech_buf/$BUFOPIN"
+# LUTBUF_OUT_TEMPLATE = LOGIC_CELL_TEMPLATE + ".lut.breaker*lut_tstart.tech_buf/$BUFIPIN"
 
-CELL_IN_TEMPLATE = LOGIC_CELL_TEMPLATE + ".in_bufs*{j}*cell_tstart.tech_buf/$BUFOPIN"
+# CELL_IN_TEMPLATE = LOGIC_CELL_TEMPLATE + ".in_bufs*{j}*cell_tstart.tech_buf/$BUFOPIN"
+CELL_IN_I_TEMPLATE = LOGIC_CELL_TEMPLATE + ".in_bufs*{j}*cell_tstart.tech_buf/$BUFIPIN"
+CELL_IN_O_TEMPLATE = LOGIC_CELL_TEMPLATE + ".in_bufs*{j}*cell_tstart.tech_buf/$BUFOPIN"
 
 CELLREGISTER_TEMPLATE = LOGIC_CELL_TEMPLATE + ".cell_reg.register"
 CELLREGISTER_D_TEMPLATE = CELLREGISTER_TEMPLATE + "/D"
@@ -377,7 +390,7 @@ CELLREGISTER_Q_TEMPLATE = CELLREGISTER_TEMPLATE + "/Q"
 
 def SpreadBlockPins():
     sides = ["up", "right", "down", "left"]
-    pins = ["config_ena_i config_shift_i", "", "config_shift_o", ""]
+    pins = ["config_clk_i config_ena_i config_shift_i glb_rstn_i", "clk_i", "config_shift_o", ""]
 
     for n in range(0, p.BLOCK_OUTPUTS, 4):
         for s in range(4):
@@ -405,58 +418,74 @@ def LogicBlockSDC():
             lut_delay = p.tech_config.TECH_LUT_DELAY
             if j >=2:
                 lut_delay *= 2
-            add_sdc += SDCMaxDelay(("[get_pins "+CELL_IN_TEMPLATE+"]").format(i=i+1, j=j+1),
+            add_sdc += SDCMaxDelay(("[get_pins "+CELL_IN_I_TEMPLATE+"]").format(i=i+1, j=j+1),
                 ("[get_pins "+LUTBUF_IN_TEMPLATE+"]").format(i=i+1), lut_delay)
-        add_sdc += SDCMaxDelay(("[get_pins " + LUTBUF_OUT_TEMPLATE + "]").format(i=i+1),
+        add_sdc += SDCMaxDelay(("[get_pins " + LUTBUF_IN_TEMPLATE + "]").format(i=i+1),
             ("[get_pins " + CELLREGISTER_D_TEMPLATE + "]").format(i=i+1), p.tech_config.TECH_ROUTE_DELAY*2+p.tech_config.TECH_REG_SETUP)
 
     # Generate crossbar constraints
     add_sdc += "\n# Crossbar constraints\n"
-    add_sdc += SDCMaxDelay(("[get_pins "+LUTBUF_OUT_TEMPLATE+"]").format(i="*"),
-        ("[get_pins "+CELL_IN_TEMPLATE+"]").format(i="*", j="*"), p.tech_config.TECH_LBCROSS_DELAY)
-    add_sdc += SDCMaxDelay("[get_ports inputs_i*]", ("[get_pins "+CELL_IN_TEMPLATE+"]").format(i="*", j="*"), p.tech_config.TECH_LBCROSS_DELAY)
+    add_sdc += SDCMaxDelay(("[get_pins "+LUTBUF_IN_TEMPLATE+"]").format(i="*"),
+        ("[get_pins "+CELL_IN_O_TEMPLATE+"]").format(i="*", j="*"), p.tech_config.TECH_LBCROSS_DELAY)
+    add_sdc += SDCMaxDelay("[get_ports inputs_i*]", ("[get_pins "+CELL_IN_O_TEMPLATE+"]").format(i="*", j="*"), p.tech_config.TECH_LBCROSS_DELAY)
 
     # Generate output constraints
     add_sdc += "\n# Output constraints\n"
     for i in range(p.CELLS_PER_BLOCK):
-        add_sdc += SDCMaxDelay(("[get_pins " + LUTBUF_OUT_TEMPLATE + "]").format(i=i+1), "[get_ports outputs_o[{i}]]".format(i=i), p.tech_config.TECH_LBOUT_DELAY)
+        add_sdc += SDCMaxDelay(("[get_pins " + LUTBUF_IN_TEMPLATE + "]").format(i=i+1), "[get_ports outputs_o[{i}]]".format(i=i), p.tech_config.TECH_LBOUT_DELAY)
         add_sdc += SDCMaxDelay(("[get_pins " + CELLREGISTER_Q_TEMPLATE + "]").format(i=i+1), "[get_ports outputs_o[{i}]]".format(i=i), p.tech_config.TECH_LBOUT_DELAY)
 
     # Generate config input constraints
     add_sdc += SDCInputDelay(0, CONFIG_CLOCK[0], "config_shift_i")
     
-    WriteSDC(LB_DESIGN_NAME, add_sdc, [LOGIC_CLOCK, CONFIG_CLOCK])
+    # WriteSDC(LB_DESIGN_NAME, add_sdc, [LOGIC_CLOCK, CONFIG_CLOCK])
+    WriteSDC(LB_DESIGN_NAME, add_sdc, [LB_CLOCK, CONFIG_CLOCK])
 
 def LogicBlockOpenlane():
     pin_cfg = SpreadBlockPins()
     ol_vars = {
             "DESIGN_IS_CORE" : 0,
-            "SYNTH_STRATEGY" : '"AREA 2"',
+            "SYNTH_STRATEGY" : '"AREA 3"',
             "CLOCK_PERIOD" : 100,
             "CLOCK_PORT" : '"clk_i config_clk_i"',
-            "FP_CORE_UTIL" : 40,
+            # ~ "FP_CORE_UTIL" : 59,
             
+            # "FP_IO_VLENGTH" : 2,
+            # "FP_IO_HLENGTH" : 2,
+
             "FP_SIZING"  : '"absolute"',
-            "DIE_AREA"  : '"0 0 180 180"',
+            "DIE_AREA"  : '"0 0 250 310"',
             
-            
-            "PL_TARGET_DENSITY" : 0.65,
+            "PL_TARGET_DENSITY" : 0.72,
             "SYNTH_TIMING_DERATE" : 0.07,
             "PL_TIME_DRIVEN" : 1,
-            "GLB_RT_MAXLAYER" : 5,
-            "VDD_NETS" : "[list {vccd1}]",
-            "GND_NETS" : "[list {vssd1}]",
+            "PL_ROUTABILITY_DRIVEN" : 1,
+            "RT_MAX_LAYER" : "Metal4",
+            # "VDD_NETS" : "[list {vccd1}]",
+            # "GND_NETS" : "[list {vssd1}]",
             "FP_PDN_VPITCH" : 50,
             "FP_PDN_AUTO_ADJUST" : 0,
             
-            "GLB_RESIZER_TIMING_OPTIMIZATIONS" : 0,
-            "GLB_RT_ALLOW_CONGESTION" : 1,
-            "DIODE_INSERTION_STRATEGY" : 0,
+            "GLB_RESIZER_TIMING_OPTIMIZATIONS" : 1,
+            "GRT_ALLOW_CONGESTION" : 1,
+            "DIODE_INSERTION_STRATEGY" : 3,
             
-            # "RIGHT_MARGIN_MULT" : 2,
-            # "LEFT_MARGIN_MULT" : 2,
-            # "TOP_MARGIN_MULT" : 2,
-            # "BOTTOM_MARGIN_MULT" : 2
+            "PL_RESIZER_TIMING_OPTIMIZATIONS" : 1,
+            # "PL_RESIZER_HOLD_MAX_BUFFER_PERCENT" : 10,
+            # "PL_RESIZER_SETUP_MAX_BUFFER_PERCENT" : 0,
+            
+            "PL_RESIZER_HOLD_SLACK_MARGIN" : 0.1,
+            # "PL_RESIZER_MAX_SLEW_MARGIN" : 40,
+            "PL_RESIZER_BUFFER_INPUT_PORTS" : 0,
+            "PL_RESIZER_BUFFER_OUTPUT_PORTS" : 1,
+            
+            # "GLB_RT_ADJUSTMENT" : 0.3,
+            # "GLB_RT_LAYER_ADJUSTMENTS" : "0.99,0.9,0.7,0,0,0",
+            
+            "RIGHT_MARGIN_MULT" : 2,
+            "LEFT_MARGIN_MULT" : 2,
+            "TOP_MARGIN_MULT" : 2,
+            "BOTTOM_MARGIN_MULT" : 2
         }
     RTL_TECH_PATH = RTL_PATH + "/" + TechDir(p)
     WriteOpenlaneDesign(LB_DESIGN_NAME, PrependPaths(p.src.SRC_LIST_LB, RTL_PATH), PrependPaths(p.src.SRC_LIST_TECH_LB, RTL_TECH_PATH), ol_vars, pin_cfg)
@@ -479,12 +508,6 @@ def Main():
 ########################################################################################################################
 ####################################################   TEMPLATES    ####################################################
 ########################################################################################################################
-
-# Templates
-DESIGN_NAME_TEMPLATE            = "designs/{NAME}"
-DESIGN_NAME_TEMPLATE_OPENROAD   = DESIGN_NAME_TEMPLATE + "_openroad"
-LEF_NAME_TEMPLATE               = DESIGN_NAME_TEMPLATE_OPENROAD + "/{NAME}.lef"
-LIB_NAME_TEMPLATE               = DESIGN_NAME_TEMPLATE_OPENROAD + "/{NAME}.lib"
 
 SDC_TEMPLATE = r'''
 set_units -time 1ns
@@ -541,6 +564,7 @@ BLOCK_CFG_CLOCK = ("ariel_fpga_top_inst.config_block_clk_buf.tech_clkbuf/X", 100
 VRNODE_CFG_CLOCK= ("ariel_fpga_top_inst.config_vrnode_clk_buf.tech_clkbuf/X", 1000)
 HRNODE_CFG_CLOCK= ("ariel_fpga_top_inst.config_hrnode_clk_buf.tech_clkbuf/X", 1000)
 LOGIC_CLOCK     = ("wb_clk_i", 40)
+LB_CLOCK        = ("clk_i", 40)
 NETLIST_NAME    = "netlist_{X}x{Y}_{TECH}".format(X=p.FPGA_FABRIC_SIZE_X, Y=p.FPGA_FABRIC_SIZE_Y, TECH=p.TARGET_TECHNOLOGY.lower()[5:9])
 TECH_DIR        = "../tech/"+p.TARGET_TECHNOLOGY.lower()
 

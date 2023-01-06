@@ -8,18 +8,16 @@ from wishbone_loader_cocotb import *
 
 import random
 
-USER_WB_BASEADDR    = 0x30F00000
+USER_WB_BASEADDR    = 0x30020000
+EFUSE_WB_ADDR       = 0x30030000
+BLOCK_CFG_ADDR      = 0x30010000
+VRNODE_CFG_ADDR     = 0x30011000
+HRNODE_CFG_ADDR     = 0x30012000
+RST_CFG_ADDR        = 0x3001A000
+CLK_CFG_ADDR        = 0x3001E000
 
-BLOCK_CFG_ADDR      = 0x30100000
-VRNODE_CFG_ADDR     = 0x30200000
-HRNODE_CFG_ADDR     = 0x30300000
-CLK_CFG_ADDR        = 0x30E00000
-RST_CFG_ADDR        = 0x30A00000
-
-CNT_ADDR            = 0x30F000F0
-
-MEM_WIDTH           = 32
-MEM_DEPTH           = 2**2
+MEM_WIDTH           = 8
+MEM_DEPTH           = 1152
 
 class WishboneMemTest:
     def __init__(self, wb):
@@ -27,10 +25,10 @@ class WishboneMemTest:
         self.clk = self.wb.dut.wb_clk_i
                 
     async def write_mem_data(self, addr, data):
-        await self.wb.write(USER_WB_BASEADDR + addr, data)
+        await self.wb.write(EFUSE_WB_ADDR + addr, data)
 
     async def read_mem_data(self, addr):
-        val = await self.wb.read(USER_WB_BASEADDR + addr)
+        val = await self.wb.read(EFUSE_WB_ADDR + addr)
         return val
 
 @cocotb.test()
@@ -49,7 +47,7 @@ async def run_test(dut):
     await loader.fabric_reset() 
     
     # Load FPGA firmware
-    await loader.load_fw("firmware.bit")
+    #await loader.load_fw("firmware.bit")
 
     # Launch FPGA fabric
     await loader.fabric_set()        
@@ -62,7 +60,7 @@ async def run_test(dut):
     
     model_ram = []
     
-    dut.log.info("Init mem with random data...")
+    dut.log.info("Init efuse with random data...")
     for i in range(MEM_DEPTH):
         buf = random.randint(0, (2**MEM_WIDTH)-1)
         await test.write_mem_data(i, buf)

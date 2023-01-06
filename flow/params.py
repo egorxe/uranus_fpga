@@ -110,9 +110,9 @@ def main():
             if i >=2:   # !only for SKY130!
                 lut_delay *= 2
             # lut_delay_matrix += "                {PS}e-12\n".format(PS=(i+2)*p.tech_config.TECH_LUT_DELAY)
-            lut_delay_matrix += "                {PS}e-12\n".format(PS=(i+2)*lut_delay)
+            lut_delay_matrix += "                {PS}e-12\n".format(PS=lut_delay)
 
-    # Generate VTR config file (XML) !!!! TODO : generate XML with large memory !!!!
+    # Generate VTR config file (XML)
     print(VTR_PARAMS_FMT.format(cfg=args.cfg, **p.fpga_config_calc, **p.tech_config_dict, MEMORY_NAME = "mem_"+str(p.MEMORY_SIZE)+"x"+str(p.MEMORY_WIDTH),
         CELLS_PER_BLOCK_1=(p.CELLS_PER_BLOCK-1), MEMORY_DEPTH_P1=(p.MEMORY_DEPTH+1), M0=(p.MEMORY_WIDTH-1), M1=(p.MEMORY_DEPTH+p.MEMORY_WIDTH),
         M2=(p.MEMORY_DEPTH+2), M3=(p.MEMORY_DEPTH+p.MEMORY_WIDTH+p.MEMORY_WIDTH), M4=(p.MEMORY_DEPTH+p.MEMORY_WIDTH+1),
@@ -246,8 +246,8 @@ Generated from {cfg} parameters file
 
     <!-- Define general purpose logic block (CLB) begin -->
     <pb_type name="fpga_logic_block">
-      <input name="logic_i" num_pins="{BLOCK_INPUTS}" equivalent="none"/>   <!-- ?equivalent? -->
-      <output name="logic_o" num_pins="{BLOCK_OUTPUTS}" equivalent="none"/>
+      <input name="logic_i" num_pins="{BLOCK_INPUTS}" equivalent="none"/>   
+      <output name="logic_o" num_pins="{BLOCK_OUTPUTS}" equivalent="none"/> <!-- equivalence could be "instance", but it gives nothing & breaks VPR -->
       <clock name="clk" num_pins="1"/>
 
       <!-- Describe basic logic element. -->

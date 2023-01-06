@@ -1,22 +1,26 @@
 SIM ?= questa
 
 MODULE ?= wishbone_loader_cocotb
-TOPLEVEL=user_project_wrapper
+TOPLEVEL= user_project_wrapper
 TOPLEVEL_LANG?=verilog
-FPGA_LIB = fpgalib
 #RTL_LIBRARY = worklib
 
 SIMSCRIPT = sim_build/runsim.do
 
-COMPILE_ARGS = -2008 -suppress 1902 -suppress 2892 +define+UNIT_DELAY +define+FUNCTIONAL +define+USE_POWER_PINS
+COMPILE_ARGS = -2008 -suppress 1902 -suppress 2892 +define+UNIT_DELAY=\#1 +define+FUNCTIONAL
 SIM_ARGS = -t 1ps
 COCOTB_HDL_TIMEUNIT = 1ps
 COCOTB_HDL_TIMEPRECISION = 1ps
 
 BASEDIR ?= ../..
 
-#VERILOG_SOURCES = $(BASEDIR)/rtl/tech/asic_skwt_130d/fpga_tech.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/primitives.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/sky130_fd_sc_hd.specify.v
-VERILOG_SOURCES = $(BASEDIR)/rtl/tech/asic_skwt_130d/fpga_tech.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/primitives.v /home/anarky/fpga/rtl/tech/asic_skwt_130d/models/sky130_fd_sc_hd.specify.v fpga_struct_block.powered.v user_project_wrapper.powered.v
-
+VERILOG_SOURCES = \
+/home/anarky/gf180mcu_fd_sc_mcu7t5v0.v \
+/home/anarky/gf180_efuse/macros/cells.v \
+/home/anarky/gf180_efuse/macros/efuse_array.v \
+/home/anarky/fpga_struct_block.nl.v \
+/home/anarky/efuse_ctrl.nl.v \
+/home/anarky/user_project_wrapper.nl.v
+#VHDL_SOURCES = /home/anarky/gf180_efuse/hw/efuse_array.vhd
 
 include $(shell cocotb-config --makefiles)/Makefile.sim

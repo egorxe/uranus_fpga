@@ -6,8 +6,9 @@
 ###################### TODO ######################
 # 1. Implement logic equvalence for logic block inputs?
 # 2. Implement global constant nets
-# 3. Change route parsing to load list first
+# 3. Change route parsing to load file into list first
 # 4. Allow cell input to itself?
+# 5. Switch to FASM
 ##################################################
 
 import xml.etree.ElementTree
@@ -56,6 +57,12 @@ class Coord(object):
 
     def __repr__(self):
         return ('['+str(self.x)+','+str(self.y)+']') #+str(self.s)+']')
+        
+    def __eq__(self, other):
+        if (other.x == self.x) and (other.y == self.y):
+            return (other.s == -1) or (self.s == -1) or (other.s == self.s)
+        else:
+            return False
 
     def Direction(self, c):
         if (c.x == self.x) and (c.y < self.y):
@@ -149,7 +156,7 @@ class Route_parser(object):
         coord = CoordFromBraces(s[3])
         input_num = int(s[6][len(LB_I_STR):len(s[6])-1])
 
-        # we name directions here from source wire perspective, for logic block they'll be inversed ??? correct ???
+        # ?? we name directions here from source wire perspective, for logic block they'll be inversed ??
         mux_val = ({DIR_UP : p.BLK_MUX_UP_START, DIR_DOWN : p.BLK_MUX_DOWN_START, DIR_LEFT : p.BLK_MUX_LEFT_START, DIR_RIGHT : p.BLK_MUX_RIGHT_START}).get(chandir) + track
 
         return [coord, input_num, mux_val]
@@ -191,13 +198,13 @@ class Route_parser(object):
 
     def GetTrack(self, s):
         track = int(s[5])
-        # VTR counts tracks in both directions, we in each direction separately
-        track = int(track / 2)# + (track % 1)
+        # VTR counts tracks in both directions, we count in each direction separately
+        track = int(track / 2)
         if (track < 0) or (track >= p.TRACKS_PER_RNODE):
             raise ValueError("Wrong track number ", track, " out of ", p.TRACKS_PER_RNODE)
         return track
 
-    # Determine channel direction from splitted string (! use the fact that right and up have even node numbers !)
+    # Determine channel direction from splitted string (! uses the fact that right and up have even node numbers !)
     def GetChandir(self, s):
         objtype = self.GetObjectType(s)
         nodenum = int(s[1])
@@ -328,7 +335,6 @@ class Route_parser(object):
             return p.BLOCK_R_MUX_START + off
         else:
             raise ValueError("WTF?")
-
 
 
     # Parse splited route file string to get source mux value for CHAN
@@ -467,7 +473,6 @@ class Route_parser(object):
                     # ! ugly hack !
                 elif len(self.prev_s) > 4 and (self.StrIsPad(self.prev_s) or self.StrIsBlock(self.prev_s)):
                     self.prev_coord = CoordFromBraces(self.prev_s[3])
-
 
         return res
 
@@ -651,7 +656,7 @@ class Logic_cell(object):
                 r.append(i)
             else:
                 # this is not very elegant input zeroing
-                #???may be it could be removed in case of more proper wire-lut or smth??
+                #??may be it could be removed in case of more proper wire-lut or smth??
                 r.append(self.cell_num)
         return r
 
@@ -765,7 +770,6 @@ class Logic_block(object):
                         rotation_map_text = rotation_map.text
                     self.SetCellFromBlif(cell_num, cell, blif, rotation_map_text)
                 elif (lut_mode == "wire"):
-                    # print("Wire mode lut ", block.get("instance"), ":", inst)
                     # find which input should be connected in LUT
                     lut_input_str = lut_block.find("inputs").find("port").text.split()
                     lut_val = -1
@@ -777,6 +781,9 @@ class Logic_block(object):
                     self.SetCellFromVal(cell_num, cell, lut_val)
                 else:
                     raise ValueError("Unsupported LUT mode", lut_mode, "in", block.get("instance"), ":", inst)
+            else:
+                if (cell_block.get("name") != "open"):
+                    raise ValueError("Unsupported XML block mode for cell:", cell_block.get("mode"))
 
 
     def GetBInputs(self):
@@ -791,18 +798,8 @@ class Logic_block(object):
         for i in bi:
             print(i, end=' ', file=f)
 
-
-    def PrintCells(self, f):
-        for l in self.cells:
-            l.PrintInputs(f)
-        for l in self.cells:
-            l.PrintLut(f)
-        for l in self.cells:
-            l.PrintMux(f)
-
     def PrintID(self, f):
         print("\n# Logic block ", self.coord, ":", file=f)
-
 
     def Print(self, f):
         self.PrintID(f)
@@ -945,7 +942,6 @@ class Fpga_fabric:
         for block in net_file.findall('block'):
             inst_str = block.get('instance')
             name = block.get('name')
-            # num = InstNum(inst_str)
             coord = place_file.CoordByName(name)
             if 'fpga_logic_block' in inst_str:
                 # logic block

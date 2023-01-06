@@ -1,9 +1,9 @@
- -- Generated from /home/egor/proj/fpga/arch/params.cfg parameters file
+ -- Generated from ../arch/params.cfg parameters file
 
 package fpga_params_pkg is
 
-constant FPGA_FABRIC_SIZE_X   : integer := 12;
-constant FPGA_FABRIC_SIZE_Y   : integer := 13;
+constant FPGA_FABRIC_SIZE_X   : integer := 4;
+constant FPGA_FABRIC_SIZE_Y   : integer := 9;
 constant FPGA_LUT_WIDTH       : integer := 4;
 constant FPGA_LUT_SIZE        : integer := (2**FPGA_LUT_WIDTH);
 constant CELL_INPUTS          : integer := FPGA_LUT_WIDTH;
@@ -76,7 +76,7 @@ constant HRNODE_CFGCHAIN_LEN  : integer := (BINPUT_MUX_STATE_WDT*2*PINS_PER_PAD 
 constant CONFIG_CHAINS_BLOCK  : integer := FABRIC_BLOCKS_X;
 constant CONFIG_CHAINS_HRNODE : integer := FABRIC_HROUTE_X;
 constant CONFIG_CHAINS_VRNODE : integer := FABRIC_VROUTE_Y;
-constant TARGET_TECHNOLOGY    : string  := "ASIC_SKWT_130D";
+constant TARGET_TECHNOLOGY    : string  := "ASIC_GF_180C";
 
 
 end fpga_params_pkg;

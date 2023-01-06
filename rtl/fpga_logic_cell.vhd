@@ -57,6 +57,6 @@ cell_reg : fpga_tech_register
     );
 
 -- MUX
-logic_o <= lut_out when config_i.mux_config = '0' else register_out;
+logic_o <= lut_out when (config_i.mux_config = '0') and (glb_rstn_i = '1') else register_out;
 
 end arch;

@@ -18,12 +18,13 @@ constant FABRIC_Y           : integer := work.fpga_params_pkg.FPGA_FABRIC_SIZE_Y
 
 constant FABRIC_BLOCKS      : integer := (FABRIC_X*FABRIC_Y) - FABRIC_IO - 4;
 
-constant BLOCK_CONFIG_REGISTER_ADDR     : std_logic_vector(31 downto 0):= X"30100000";
-constant VRNODE_CONFIG_REGISTER_ADDR    : std_logic_vector(31 downto 0) := X"30200000";
-constant HRNODE_CONFIG_REGISTER_ADDR    : std_logic_vector(31 downto 0):= X"30300000";
-constant RST_CONFIG_REGISTER_ADDR       : std_logic_vector(31 downto 0):= X"30A00000";
-constant TAP_CONFIG_REGISTER_ADDR       : std_logic_vector(31 downto 0):= X"30E00000";
-constant FPGA_FABRIC_WB_ADDR            : std_logic_vector(31 downto 0):= X"30F00000";
+constant BLOCK_CONFIG_REGISTER_ADDR     : std_logic_vector(31 downto 0) := X"30010000";
+constant VRNODE_CONFIG_REGISTER_ADDR    : std_logic_vector(31 downto 0) := X"30011000";
+constant HRNODE_CONFIG_REGISTER_ADDR    : std_logic_vector(31 downto 0) := X"30012000";
+constant RST_CONFIG_REGISTER_ADDR       : std_logic_vector(31 downto 0) := X"3001A000";
+constant TAP_CONFIG_REGISTER_ADDR       : std_logic_vector(31 downto 0) := X"3001E000";
+constant FPGA_FABRIC_WB_ADDR            : std_logic_vector(31 downto 0) := X"30020000";
+constant EFUSE_WB_ADDR                  : std_logic_vector(31 downto 0) := X"30030000";
     
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -284,7 +285,6 @@ function X_to_zero(a : std_logic_vector) return std_logic_vector;
 -- Synthesis types
 function TargetIsSimulation return boolean;
 function TargetIsASIC return boolean;
-function TargetIsTSMC28HPCP return boolean;
 function TargetIsUnknown return boolean;
 
 end fpga_pkg;
@@ -627,18 +627,9 @@ begin
     end if;
 end;
 
-function TargetIsTSMC28HPCP return boolean is
-begin
-    if work.fpga_params_pkg.TARGET_TECHNOLOGY = "ASIC_TSMC_28HP" then
-        return True;
-    else
-        return False;
-    end if;
-end;
-
 function TargetIsUnknown return boolean is
 begin
-    if TargetIsTSMC28HPCP then
+    if TargetIsASIC then
         return False;
     elsif TargetIsSimulation then
         return False;

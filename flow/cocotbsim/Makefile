@@ -16,9 +16,20 @@ COCOTB_HDL_TIMEPRECISION = 1ps
 BASEDIR ?= ../..
 
 VHDL_LIB_ORDER = fpgalib
-VERILOG_SOURCES = $(BASEDIR)/rtl/tech/asic_skwt_130d/fpga_tech.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/primitives.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/sky130_fd_sc_hd.v
+VERILOG_SOURCES = $(BASEDIR)/rtl/tech/asic_skwt_130d/fpga_tech.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/primitives.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/sky130_fd_sc_hd.v \
+$(BASEDIR)/rtl/tech/asic_gf_180c/models/gf180mcu_fd_sc_mcu7t5v0.v \
+/home/anarky/gf180_efuse/macros/cells.v
 VHDL_SOURCES_$(FPGA_LIB) = $(BASEDIR)/rtl/fpga_params_pkg.vhd $(BASEDIR)/rtl/fpga_pkg.vhd $(BASEDIR)/rtl/wishbone_pkg.vhd $(BASEDIR)/rtl/fpga_lut.vhd $(BASEDIR)/rtl/fpga_cfg_shiftreg.vhd $(BASEDIR)/rtl/fpga_logic_cell.vhd $(BASEDIR)/rtl/fpga_routing_mux.vhd $(BASEDIR)/rtl/fpga_logic_block.vhd $(BASEDIR)/rtl/fpga_routing_node.vhd $(BASEDIR)/rtl/fpga_routing_node_wcfg.vhd $(BASEDIR)/rtl/fpga_routing_mux_wcfg.vhd  $(BASEDIR)/rtl/fpga_io_mux.vhd $(BASEDIR)/rtl/fpga_memory_block.vhd $(BASEDIR)/rtl/fpga_struct_block.vhd $(BASEDIR)/rtl/fpga_fabric.vhd
-VHDL_SOURCES = $(BASEDIR)/rtl/wb_register32.vhd $(BASEDIR)/rtl/ariel_fpga_top.vhd $(BASEDIR)/rtl/wb_arbiter_sync.vhd
+VHDL_SOURCES = $(BASEDIR)/rtl/wb_register32.vhd $(BASEDIR)/rtl/ariel_fpga_top.vhd $(BASEDIR)/rtl/wb_arbiter_sync.vhd \
+$(BASEDIR)/rtl/fpga_fw_loader.vhd \
+/home/anarky/gf180_efuse/macros/cells.vhd \
+/home/anarky/gf180_efuse/hw/addr_sel.vhd \
+/home/anarky/gf180_efuse/hw/dmuxn.vhd \
+/home/anarky/gf180_efuse/hw/efuse_array.vhd \
+/home/anarky/gf180_efuse/hw/efuse_bank.vhd \
+/home/anarky/gf180_efuse/hw/efuse_rom.vhd \
+/home/anarky/gf180_efuse/hw/efuse_ctrl.vhd
+
 
 .PHONY: patch-sim
 patch-sim: $(SIMSCRIPT)
