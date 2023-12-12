@@ -1,4 +1,4 @@
- -- Generated from ../arch/params.cfg parameters file
+ -- Generated from /home/egor/proj/fpga/arch/params.cfg parameters file
 
 package fpga_params_pkg is
 

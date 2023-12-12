@@ -1,5 +1,6 @@
 import cocotb
 from cocotb.triggers import RisingEdge
+from cocotb.triggers import Timer
 from cocotb.clock import Clock
 from cocotbext.wishbone.driver import WishboneMaster
 from cocotbext.wishbone.driver import WBOp
@@ -15,6 +16,8 @@ VRNODE_CFG_ADDR     = 0x30011000
 HRNODE_CFG_ADDR     = 0x30012000
 RST_CFG_ADDR        = 0x3001A000
 CLK_CFG_ADDR        = 0x3001E000
+EFUSE_WTIMER_ADDR   = 0x30030801
+EFUSE_RTIMER_ADDR   = 0x30030800
 
 MEM_WIDTH           = 8
 MEM_DEPTH           = 1152
@@ -37,20 +40,25 @@ async def run_test(dut):
     wb = WishboneRegs(dut, USER_WB_BASEADDR)
     loader = WishboneCfgLoader(wb)
     test = WishboneMemTest(wb)
-    
+    try:
+        dut.VDD.value = 1
+        dut.VSS.value = 0
+    except:
+        pass
+        
+    dut.io_in.value = 0
+    await cocotb.triggers.Timer(100, "ns")
+
     dut.log.info("Starting firmware loading...")
     
     # Reset regs
     await loader.reset()
     
+    await test.wb.write(EFUSE_WTIMER_ADDR, 1)
+    await test.wb.write(EFUSE_RTIMER_ADDR, 0x11)    
+    
     # Reset FPGA fabric
     await loader.fabric_reset() 
-    
-    # Load FPGA firmware
-    #await loader.load_fw("firmware.bit")
-
-    # Launch FPGA fabric
-    await loader.fabric_set()        
     
     dut.log.info("Firmware loading finished!")
     

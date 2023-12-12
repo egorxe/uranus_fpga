@@ -7,20 +7,19 @@ TOPLEVEL_LANG?=verilog
 
 SIMSCRIPT = sim_build/runsim.do
 
-COMPILE_ARGS = -2008 -suppress 1902 -suppress 2892 +define+UNIT_DELAY=\#1 +define+FUNCTIONAL
-SIM_ARGS = -t 1ps
+COMPILE_ARGS = -2008 -suppress 1902 -suppress 2892 -suppress 12090 -suppress 12088 -suppress 3240 +define+UNIT_DELAY=\#1 +define+USE_POWER_PINS=1
+SIM_ARGS = -t 1ps -suppress 12090 -suppress 12088 -suppress 3240
 COCOTB_HDL_TIMEUNIT = 1ps
 COCOTB_HDL_TIMEPRECISION = 1ps
 
 BASEDIR ?= ../..
 
 VERILOG_SOURCES = \
-/home/anarky/gf180mcu_fd_sc_mcu7t5v0.v \
-/home/anarky/gf180_efuse/macros/cells.v \
-/home/anarky/gf180_efuse/macros/efuse_array.v \
-/home/anarky/fpga_struct_block.nl.v \
-/home/anarky/efuse_ctrl.nl.v \
-/home/anarky/user_project_wrapper.nl.v
-#VHDL_SOURCES = /home/anarky/gf180_efuse/hw/efuse_array.vhd
+../../netlist/gf180mcu_fd_sc_mcu7t5v0.v \
+../../netlist/primitives.v \
+../../netlist/fpga_struct_block.v \
+../../netlist/efuse_ctrl.v \
+../../netlist/user_project_wrapper.v
+VHDL_SOURCES = ../../../gf180_efuse/hw/efuse_array.vhd
 
 include $(shell cocotb-config --makefiles)/Makefile.sim

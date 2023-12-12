@@ -1,40 +1,21 @@
-SIM ?= questa
+SIM ?= ghdl
 
 MODULE ?= wishbone_loader_cocotb
 TOPLEVEL=ariel_fpga_top
-TOPLEVEL_LANG?=vhdl
+TOPLEVEL_LANG=vhdl
 FPGA_LIB = fpgalib
-#RTL_LIBRARY = worklib
+RTL_LIBRARY = $(FPGA_LIB)
+BASEDIR ?= $(shell readlink -f ../..)
+EXTRA_ARGS = --std=08 -fsynopsys
+SIM_ARGS += --wave=wave.ghw --ieee-asserts=disable
 
-SIMSCRIPT = sim_build/runsim.do
+EFUSE_HDL_DIR ?= ../../../gf180_efuse_compiler/hdl
 
-COMPILE_ARGS = -2008 -suppress 1902 -suppress 2892 +define+UNIT_DELAY=\#1 +define+FUNCTIONAL
-SIM_ARGS = -t 1ps
-COCOTB_HDL_TIMEUNIT = 1ps
-COCOTB_HDL_TIMEPRECISION = 1ps
+VHDL_LIB_ORDER = $(EFUSE_LIB) $(FPGA_LIB) $(RTL_LIBRARY)
 
-BASEDIR ?= ../..
+EFUSE_SRC = $(EFUSE_HDL_DIR)/*.vhd
 
-VHDL_LIB_ORDER = fpgalib
-VERILOG_SOURCES = $(BASEDIR)/rtl/tech/asic_skwt_130d/fpga_tech.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/primitives.v $(BASEDIR)/rtl/tech/asic_skwt_130d/models/sky130_fd_sc_hd.v \
-$(BASEDIR)/rtl/tech/asic_gf_180c/models/gf180mcu_fd_sc_mcu7t5v0.v \
-/home/anarky/gf180_efuse/macros/cells.v
-VHDL_SOURCES_$(FPGA_LIB) = $(BASEDIR)/rtl/fpga_params_pkg.vhd $(BASEDIR)/rtl/fpga_pkg.vhd $(BASEDIR)/rtl/wishbone_pkg.vhd $(BASEDIR)/rtl/fpga_lut.vhd $(BASEDIR)/rtl/fpga_cfg_shiftreg.vhd $(BASEDIR)/rtl/fpga_logic_cell.vhd $(BASEDIR)/rtl/fpga_routing_mux.vhd $(BASEDIR)/rtl/fpga_logic_block.vhd $(BASEDIR)/rtl/fpga_routing_node.vhd $(BASEDIR)/rtl/fpga_routing_node_wcfg.vhd $(BASEDIR)/rtl/fpga_routing_mux_wcfg.vhd  $(BASEDIR)/rtl/fpga_io_mux.vhd $(BASEDIR)/rtl/fpga_memory_block.vhd $(BASEDIR)/rtl/fpga_struct_block.vhd $(BASEDIR)/rtl/fpga_fabric.vhd
-VHDL_SOURCES = $(BASEDIR)/rtl/wb_register32.vhd $(BASEDIR)/rtl/ariel_fpga_top.vhd $(BASEDIR)/rtl/wb_arbiter_sync.vhd \
-$(BASEDIR)/rtl/fpga_fw_loader.vhd \
-/home/anarky/gf180_efuse/macros/cells.vhd \
-/home/anarky/gf180_efuse/hw/addr_sel.vhd \
-/home/anarky/gf180_efuse/hw/dmuxn.vhd \
-/home/anarky/gf180_efuse/hw/efuse_array.vhd \
-/home/anarky/gf180_efuse/hw/efuse_bank.vhd \
-/home/anarky/gf180_efuse/hw/efuse_rom.vhd \
-/home/anarky/gf180_efuse/hw/efuse_ctrl.vhd
-
-
-.PHONY: patch-sim
-patch-sim: $(SIMSCRIPT)
-	# ugly hack to patch name of modelsim library with verilog files
-	sed -i 's/vlog -work work/vlog -work $(FPGA_LIB)/g' $(SIMSCRIPT)
-	$(MAKE) all
+VHDL_SOURCES_$(FPGA_LIB) = $(BASEDIR)/rtl/tech/simu_beha_vior/fpga_tech.vhd $(BASEDIR)/rtl/fpga_params_pkg.vhd $(BASEDIR)/rtl/fpga_pkg.vhd $(BASEDIR)/rtl/wishbone_pkg.vhd $(BASEDIR)/rtl/fpga_lut.vhd $(BASEDIR)/rtl/fpga_cfg_shiftreg.vhd $(BASEDIR)/rtl/fpga_logic_cell.vhd $(BASEDIR)/rtl/fpga_routing_mux.vhd $(BASEDIR)/rtl/fpga_logic_block.vhd $(BASEDIR)/rtl/fpga_routing_node.vhd $(BASEDIR)/rtl/fpga_routing_node_wcfg.vhd $(BASEDIR)/rtl/fpga_routing_mux_wcfg.vhd  $(BASEDIR)/rtl/fpga_io_mux.vhd $(BASEDIR)/rtl/fpga_memory_block.vhd $(BASEDIR)/rtl/fpga_struct_block.vhd $(BASEDIR)/rtl/fpga_fabric.vhd $(EFUSE_SRC) $(BASEDIR)/rtl/wb_register32.vhd $(BASEDIR)/rtl/fpga_fw_loader.vhd $(BASEDIR)/rtl/wb_arbiter_sync.vhd $(BASEDIR)/rtl/ariel_fpga_top.vhd 
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
+

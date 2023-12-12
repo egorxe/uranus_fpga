@@ -584,6 +584,7 @@ begin
 -- pragma translate_on
     return (res);
 end;
+
 function notx(d : std_logic) return boolean is
     variable res : boolean;
 begin

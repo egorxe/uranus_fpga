@@ -48,7 +48,7 @@ module fpga_tech_clkbuffer
   wire buf_X;
   assign z = buf_X;
      
-  gf180mcu_fd_sc_mcu7t5v0__clkbuf_1 tech_buf (
+  gf180mcu_fd_sc_mcu7t5v0__clkbuf_1 tech_clkbuf (
     .I(i),
     .Z(buf_X));
 endmodule
@@ -71,7 +71,7 @@ module efuse_ctrl (wb_ack_o,
  input wb_sel_i;
  input wb_stb_i;
  input wb_we_i;
- input [10:0] wb_adr_i;
+ input [11:0] wb_adr_i;
  input [7:0] wb_dat_i;
  output [7:0] wb_dat_o;
 endmodule

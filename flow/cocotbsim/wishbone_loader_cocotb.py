@@ -1,5 +1,6 @@
 import cocotb
 from cocotb.triggers import RisingEdge
+from cocotb.triggers import Timer
 from cocotb.clock import Clock
 from cocotbext.wishbone.driver import WishboneMaster
 from cocotbext.wishbone.driver import WBOp
@@ -63,6 +64,7 @@ class WishboneCfgLoader:
     async def reset(self):
         self.rst.value = 1
         await cocotb.triggers.ClockCycles(self.clk, 10)
+        await cocotb.triggers.Timer(50, "ns")
         self.rst.value = 0
         await RisingEdge(self.clk)
         await RisingEdge(self.clk)

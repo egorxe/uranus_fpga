@@ -7,6 +7,10 @@ from cocotbext.wishbone.driver import WBOp
 from wishbone_loader_cocotb import *
 
 USER_WB_BASEADDR    = 0x30020000
+EFUSE_WTIMER_ADDR   = 0x30030801
+EFUSE_RTIMER_ADDR   = 0x30030800
+
+
 
 CNT_ADDR            = USER_WB_BASEADDR + 0xF0
 
@@ -29,14 +33,14 @@ async def run_test(dut):
     loader = WishboneCfgLoader(wb)
     test = WishboneCntTest(wb)
     io_in = dut.io_in
-    io_in[37] = 0
-    # ~ vccd1.value = 1
-    # ~ vccd2.value = 0
-    # ~ vdda1.value = 1
-    # ~ vdda2.value = 1
-    # ~ vssa1.value = 0
-    # ~ vssa2.value = 0
-    # ~ vssd2.value = 0
+    la_data_out = dut.la_data_out
+    dut.io_in.value = 0
+
+    try:
+        dut.VDD.value = 1
+        dut.VSS.value = 0
+    except:
+        pass
     
     dut.log.info("Starting firmware loading...")
 
@@ -46,36 +50,18 @@ async def run_test(dut):
     await loader.reset()
     
     # Reset FPGA fabric
-    await loader.fabric_reset() 
+    #await loader.fabric_reset() 
     
     await cocotb.triggers.ClockCycles(wb.clk, 10)
     
     # Load FPGA firmware
+    await test.wb.write(EFUSE_WTIMER_ADDR, 1)
+    await test.wb.write(EFUSE_RTIMER_ADDR, 0x11)
     await loader.load_fw_efuse("firmware.bit")
+    dut.io_in.value = 1<<37
     
-    io_in[37].value = 1
-    
-    await cocotb.triggers.ClockCycles(wb.clk, 100000)
-    
-    io_in[37].value = 0
-    
-    # Launch FPGA fabric
-    # await loader.fabric_set()        
-    
-    # dut.log.info("Firmware loading finished!")
-    
-    # await loader.wb_reset()
-    
-    # vccd1 = dut.vccd1
-    # vccd2 = dut.vccd2
-    # vdda1 = dut.vdda1
-    # vdda2 = dut.vdda2
-    # vssa1 = dut.vssa1
-    # vssa2 = dut.vssa2
-    # vssd2 = dut.vssd2
-    
+    await test.wb.read(EFUSE_WTIMER_ADDR)   # hangs until WB is switched back
 
-    
     dut.log.info("Design ready for test!")
     
     dut.log.info("Checking that initial value is correct...")

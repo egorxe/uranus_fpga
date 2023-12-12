@@ -278,12 +278,11 @@ def PlaceMacro(name, x, y):
     return name + " " + str(x) + " " + str(y) + " N\n"
 
 LB_OFFSET_X = 60    
-LB_OFFSET_Y = 80     
+LB_OFFSET_Y = 90     
 LB_SIZE   = 300    
-LB_STEP   = LB_SIZE*1.1195
+LB_STEP   = LB_SIZE*1.14
 LB_STEP_Y  = LB_SIZE*1.40
 
-# ~ EF_OFFSET_Y = 336.7
 EF_OFFSET_Y = 561.7
 
 def PlaceFabricMacros():
@@ -304,11 +303,37 @@ def FabricOpenlane(partitions):
     clock_nets += GetPinNets(HRNODE_CFG_CLOCK)
     
     ol_vars = {
-        ADD_CONFIG_TCL : "source $::env(CARAVEL_UPRJ_ROOT)/openlane/user_project_wrapper/fixed_dont_change/default_wrapper_cfgs.tcl \n source $::env(CARAVEL_UPRJ_ROOT)/openlane/user_project_wrapper/fixed_dont_change/fixed_wrapper_cfgs.tcl",
+        # FIXED FROM CARAVEL
+        "FP_DEF_TEMPLATE" : "$::env(CARAVEL_UPRJ_ROOT)/openlane/user_project_wrapper/fixed_dont_change/user_project_wrapper.def",
+        "MAGIC_ZEROIZE_ORIGIN": 0,
+        "FP_SIZING": "absolute",
+        "DIE_AREA": '"0 0 2980.2 2980.2"',
+        "CORE_AREA": '"12 12 2968.2 2968.2"',
+        "RUN_CVC": 0,
+        "PIN_UNIT": 2.4,
+        "FP_IO_VEXTEND": "[expr {2 * $::env(PIN_UNIT)}]",
+        "FP_IO_HEXTEND": "[expr {2 * $::env(PIN_UNIT)}]",
+        "FP_IO_VLENGTH": "$::env(PIN_UNIT)",
+        "FP_IO_HLENGTH": "$::env(PIN_UNIT)",
+        "FP_IO_VTHICKNESS_MULT": 4,
+        "FP_IO_HTHICKNESS_MULT": 4,
+        "FP_PDN_CORE_RING": 1,
+        "FP_PDN_CORE_RING_VWIDTH": 3.1,
+        "FP_PDN_CORE_RING_HWIDTH": 3.1,
+        "FP_PDN_CORE_RING_VOFFSET": 14,
+        "FP_PDN_CORE_RING_HOFFSET": 16,
+        "FP_PDN_CORE_RING_VSPACING": 1.7,
+        "FP_PDN_CORE_RING_HSPACING": 1.7,
+        "FP_PDN_HOFFSET": 5,
+        "FP_PDN_HPITCH_MULT": 1,
+        "FP_PDN_HPITCH": "[expr {60 + $::env(FP_PDN_HPITCH_MULT) * 30}]",
+        "FP_PDN_VWIDTH": 3.1,
+        "FP_PDN_HWIDTH": 3.1,
+        # FIXED FROM CARAVEL
+        
         "DESIGN_IS_CORE" : 1,
         
         "SYNTH_STRATEGY" : '"AREA 0"',
-        # "SYNTH_FIXED_NETLIST" : '"/home/egor/proj/fpga/impl/open/designs/user_project_wrapper/runs/RUN_2022.01.06_17.39.18/results/synthesis/user_project_wrapper.v"',
        
         "CLOCK_PERIOD" : 100,
         "CLOCK_PORT" : '"wb_clk_i"',
@@ -320,44 +345,36 @@ def FabricOpenlane(partitions):
         "FP_PDN_AUTO_ADJUST" : 0,
         "FP_PDN_IRDROP" : 0,
         "FP_PDN_HOFFSET" : 3,
-        "FP_PDN_HORIZONTAL_HALO" : 5,
-        "FP_PDN_VERTICAL_HALO" : 5,
+        "FP_PDN_HORIZONTAL_HALO" : 1,
+        "FP_PDN_VERTICAL_HALO" : 1,
         
         "FP_PDN_VPITCH" : 110,
         "FP_PDN_VSPACING" : 10,
         "FP_PDN_HSPACING" : 41.9,
         "FP_PDN_AUTO_ADJUST" : 0,
         
-        "PL_TIME_DRIVEN" : 1,
-        # ~ "PL_TARGET_DENSITY" : 0.34,
-        "PL_TARGET_DENSITY" : 0.42,
-        # ~ "DIODE_INSERTION_STRATEGY" : 3,
-
-        
-        # ~ "PL_RESIZER_MAX_WIRE_LENGTH" : 2000.0,
+        "PL_TARGET_DENSITY" : 0.48,
         "PL_RESIZER_ALLOW_SETUP_VIOS" : 1,
-        # ~ "PL_RESIZER_HOLD_SLACK_MARGIN" : 0.1,
-        # ~ "PL_RESIZER_MAX_SLEW_MARGIN" : 40,
-        # ~ "GLB_RESIZER_MAX_SLEW_MARGIN" : 40,
-        # ~ "GLB_RESIZER_HOLD_SLACK_MARGIN" : 0.1,
-        # ~ "GLB_RESIZER_ALLOW_SETUP_VIOS" : 1,
-        # ~ "GLB_RESIZER_TIMING_OPTIMIZATIONS" : 1,
         
+        "GLB_RESIZER_TIMING_OPTIMIZATIONS" : 0,
         "GRT_ALLOW_CONGESTION" : 1,
-        "GRT_ADJUSTMENT" : 0.1,
-        # ~ "GRT_LAYER_ADJUSTMENTS" : "0.6,0.4,0.3,0,0",
+        "GRT_ADJUSTMENT" : 0.00,
         
-        # "FP_PDN_MACRO_HOOKS" : '"' + LB_DESIGN_NAME + ' vccd1 vssd1"',
-        # "FP_PDN_MACRO_HOOKS" : '"' + ".*struct_block" + ' vccd1 vssd1"',
-        
-        # use custom PDN config to skip stripes generation for unused domains
-        "PDN_CFG" : '"'+AbsPath('.')+'/pdn_cfg.tcl"',
+        # use custom PDN config
+        "FP_PDN_CFG" : '"'+AbsPath('.')+'/pdn_cfg.tcl"',
+        "FP_TAP_HORIZONTAL_HALO" : 5,
         
         "RUN_KLAYOUT_XOR" : 0,
+        "STA_WRITE_LIB" : 0,
+        "RUN_IRDROP_REPORT" : 0,
+        # use KLayout as Magic produced GDSes have cell problems
+        "PRIMARY_SIGNOFF_TOOL" : "klayout",
         
         "VERILOG_FILES_BLACKBOX" : '"'+AbsPath('.')+'/macros.v"',
         "EXTRA_LEFS" : '"'+AbsPath('.')+'/best/{LB}/results/final/lef/{LB}.lef'.format(LB=LB_DESIGN_NAME) + 
             ' '+AbsPath('.')+'/best/{EF}/results/final/lef/{EF}.lef"'.format(EF=EFUSE_DESIGN_NAME),
+        "EXTRA_LIBS" : '"'+AbsPath('.')+'/best/{LB}/results/final/lib/{LB}.lib'.format(LB=LB_DESIGN_NAME) + 
+            ' '+AbsPath('.')+'/best/{EF}/results/final/lib/{EF}.lib"'.format(EF=EFUSE_DESIGN_NAME),
         "EXTRA_GDS_FILES" : '"'+AbsPath('.')+'/best/{LB}/results/final/gds/{LB}.gds'.format(LB=LB_DESIGN_NAME) + 
             ' '+AbsPath('.')+'/best/{EF}/results/final/gds/{EF}.gds"'.format(EF=EFUSE_DESIGN_NAME),
     }
@@ -427,7 +444,7 @@ def LogicBlockSDC():
     add_sdc += "\n# Crossbar constraints\n"
     add_sdc += SDCMaxDelay(("[get_pins "+LUTBUF_IN_TEMPLATE+"]").format(i="*"),
         ("[get_pins "+CELL_IN_O_TEMPLATE+"]").format(i="*", j="*"), p.tech_config.TECH_LBCROSS_DELAY)
-    add_sdc += SDCMaxDelay("[get_ports inputs_i*]", ("[get_pins "+CELL_IN_O_TEMPLATE+"]").format(i="*", j="*"), p.tech_config.TECH_LBCROSS_DELAY)
+    add_sdc += SDCMaxDelay("[get_ports inputs*_i*]", ("[get_pins "+CELL_IN_O_TEMPLATE+"]").format(i="*", j="*"), p.tech_config.TECH_LBCROSS_DELAY)
 
     # Generate output constraints
     add_sdc += "\n# Output constraints\n"
@@ -448,44 +465,35 @@ def LogicBlockOpenlane():
             "SYNTH_STRATEGY" : '"AREA 3"',
             "CLOCK_PERIOD" : 100,
             "CLOCK_PORT" : '"clk_i config_clk_i"',
-            # ~ "FP_CORE_UTIL" : 59,
-            
-            # "FP_IO_VLENGTH" : 2,
-            # "FP_IO_HLENGTH" : 2,
 
             "FP_SIZING"  : '"absolute"',
-            "DIE_AREA"  : '"0 0 250 310"',
+            "DIE_AREA"  : '"0 0 250 305"',
             
-            "PL_TARGET_DENSITY" : 0.72,
+            "PL_TARGET_DENSITY" : 0.71,
             "SYNTH_TIMING_DERATE" : 0.07,
             "PL_TIME_DRIVEN" : 1,
             "PL_ROUTABILITY_DRIVEN" : 1,
             "RT_MAX_LAYER" : "Metal4",
-            # "VDD_NETS" : "[list {vccd1}]",
-            # "GND_NETS" : "[list {vssd1}]",
             "FP_PDN_VPITCH" : 50,
             "FP_PDN_AUTO_ADJUST" : 0,
             
             "GLB_RESIZER_TIMING_OPTIMIZATIONS" : 1,
             "GRT_ALLOW_CONGESTION" : 1,
-            "DIODE_INSERTION_STRATEGY" : 3,
+            
+            "CTS_ROOT_BUFFER" : "$::env(STD_CELL_LIBRARY)__clkbuf_8",   # disable largest CTS buffers cause core is small
+            "CTS_CLK_BUFFER_LIST" : "\"$::env(STD_CELL_LIBRARY)__clkbuf_2 $::env(STD_CELL_LIBRARY)__clkbuf_4\"",
             
             "PL_RESIZER_TIMING_OPTIMIZATIONS" : 1,
-            # "PL_RESIZER_HOLD_MAX_BUFFER_PERCENT" : 10,
-            # "PL_RESIZER_SETUP_MAX_BUFFER_PERCENT" : 0,
-            
-            "PL_RESIZER_HOLD_SLACK_MARGIN" : 0.1,
-            # "PL_RESIZER_MAX_SLEW_MARGIN" : 40,
             "PL_RESIZER_BUFFER_INPUT_PORTS" : 0,
             "PL_RESIZER_BUFFER_OUTPUT_PORTS" : 1,
             
-            # "GLB_RT_ADJUSTMENT" : 0.3,
-            # "GLB_RT_LAYER_ADJUSTMENTS" : "0.99,0.9,0.7,0,0,0",
-            
-            "RIGHT_MARGIN_MULT" : 2,
-            "LEFT_MARGIN_MULT" : 2,
+            "GRT_ADJUSTMENT" : 0.17,
+            "RIGHT_MARGIN_MULT" : 3,
+            "LEFT_MARGIN_MULT" : 3,
             "TOP_MARGIN_MULT" : 2,
-            "BOTTOM_MARGIN_MULT" : 2
+            "BOTTOM_MARGIN_MULT" : 2,
+            
+            "RUN_IRDROP_REPORT" : 0
         }
     RTL_TECH_PATH = RTL_PATH + "/" + TechDir(p)
     WriteOpenlaneDesign(LB_DESIGN_NAME, PrependPaths(p.src.SRC_LIST_LB, RTL_PATH), PrependPaths(p.src.SRC_LIST_TECH_LB, RTL_TECH_PATH), ol_vars, pin_cfg)
@@ -560,9 +568,9 @@ p = Params(args.cfg)
 
 # Misc defines
 CONFIG_CLOCK    = ("config_clk_i", 1000)
-BLOCK_CFG_CLOCK = ("ariel_fpga_top_inst.config_block_clk_buf.tech_clkbuf/X", 1000)
-VRNODE_CFG_CLOCK= ("ariel_fpga_top_inst.config_vrnode_clk_buf.tech_clkbuf/X", 1000)
-HRNODE_CFG_CLOCK= ("ariel_fpga_top_inst.config_hrnode_clk_buf.tech_clkbuf/X", 1000)
+BLOCK_CFG_CLOCK = ("ariel_fpga_top_inst.config_block_clk_buf.tech_clkbuf/Z", 1000)
+VRNODE_CFG_CLOCK= ("ariel_fpga_top_inst.config_vrnode_clk_buf.tech_clkbuf/Z", 1000)
+HRNODE_CFG_CLOCK= ("ariel_fpga_top_inst.config_hrnode_clk_buf.tech_clkbuf/Z", 1000)
 LOGIC_CLOCK     = ("wb_clk_i", 40)
 LB_CLOCK        = ("clk_i", 40)
 NETLIST_NAME    = "netlist_{X}x{Y}_{TECH}".format(X=p.FPGA_FABRIC_SIZE_X, Y=p.FPGA_FABRIC_SIZE_Y, TECH=p.TARGET_TECHNOLOGY.lower()[5:9])

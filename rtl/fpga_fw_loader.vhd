@@ -1,11 +1,10 @@
 --! @title FPGA firmware loader
 --! @file fpga_fw_loader.vhd
---! @author anarky (anarky@maltsystem.com)
---! @version 0.1a
---! @date 2022-12-07
+--! @author anarky
+--! @version 0.2a
+--! @date 2023-12-01
 --!
---! @copyright  Copyright (c) 2022 by MALT System
---!              Apache License 2.0
+--! @copyright  Apache License 2.0
 --! @details This module reads firmware from OTP and loads it
 --! into FPGA via Wishbone interface. This version is configured
 --! only for Ophelia FPGA. Later we will make it more flexible.
@@ -34,7 +33,7 @@ entity fpga_fw_loader is
         wb_stb_i : out std_logic; --! WB stb signal
         wb_cyc_i : out std_logic; --! WB cyc signal
         wb_ack_o : in std_logic; --! WB ack signal
-        
+        self_fw_done : out std_logic;
         self_fw_enable : in std_logic --! Active high enable for loading
     );
 end fpga_fw_loader;
@@ -78,6 +77,7 @@ type v_type is record
     fetch_cnt : integer range 0 to FW_BYTE_COUNT;
     stall_cnt : integer range 0 to 100;
     stall_time : integer range 0 to 100;
+    self_fw_done : std_logic;
 end record;
 signal r, rin : v_type;
 
@@ -108,24 +108,40 @@ wb_sel_i    <= r.wb_sel_i;
 wb_stb_i    <= r.wb_stb_i;
 wb_cyc_i    <= r.wb_stb_i;
 
+self_fw_done <= r.self_fw_done;
+
 SYNC : process(wb_clk_i)
 begin
-    if rising_edge(wb_clk_i) then
-        if wb_rst_i = '1' then
-            r.state <= idle;
-            r.fw_cnt <= 0;
-            r.wb_we_i <= '0';
-            r.wb_stb_i <= '0';
-            r.wb_cyc_i <= '0';
-            r.wb_dat_i <= (others => '0');
-            r.wb_adr_i <= (others => '0');
-            r.rptr <= (others => '0');
-            r.wptr <= (others => '0');
-            r.tap_ff <= '0';
-            r.fetch_cnt <= 0;
-        else
-            r <= rin;
-        end if;
+	if wb_rst_i = '1' then
+		r.state <= idle;
+		r.next_state <= idle;
+		r.fw_cnt <= 0;
+		r.rdata_buf <= (others => '0');
+		r.wdata_buf <= (others => '0');
+		r.wb_we_i <= '0';
+		r.wb_stb_i <= '0';
+		r.wb_cyc_i <= '0';
+		r.wb_sel_i <= (others => '0');
+		r.wb_dat_i <= (others => '0');
+		r.wb_adr_i <= (others => '0');
+		r.rptr <= (others => '0');
+		r.wptr <= (others => '0');
+		r.tap_ff <= '0';
+		r.fetch_cnt <= 0;
+		r.self_fw_done <= '0';
+		r.fw_en <= (others => '0');
+		r.ptr_buf <= (others => '0');
+		r.fw_ring <= (others => '0');
+		r.bl_reg <= (others => '0');
+		r.vr_reg <= (others => '0');
+		r.hr_reg <= (others => '0');
+		r.tap_word <= (others => '0');
+		r.stall_cnt <= 0;
+		r.stall_time <= 0;	
+	else
+		if rising_edge(wb_clk_i) then
+			r <= rin;
+		end if;
     end if;
 end process;
 
@@ -163,19 +179,20 @@ procedure skip_nck (
                         ) is
 begin
     v.state := stall;
-	v.next_state := next_hop;
-	v.stall_time := cks;
+    v.next_state := next_hop;
+    v.stall_time := cks;
 end procedure;
 
 begin
     v := r;
+    v.self_fw_done := '0';
     case r.state is
         when idle =>
             if self_fw_enable = '1' then
                 wb_write_req(RST_CONFIG_REGISTER_ADDR, X"00000003", fabric_reset);
             end if;
-		when fabric_reset =>
-			skip_nck(FPGA_RST_TIME, fw_fetch);
+        when fabric_reset =>
+            skip_nck(FPGA_RST_TIME, fw_fetch);
         when fw_fetch =>
             if r.fetch_cnt < FW_BYTE_COUNT then
                 if cnt_diff(r.wptr, r.rptr) < 2*WB_WDT then
@@ -273,15 +290,15 @@ begin
                 v.wb_stb_i := '0';
                 v.rdata_buf := wb_dat_o;
             end if;
-		when stall =>
-			if r.stall_cnt < r.stall_time then
-				v.stall_cnt := r.stall_cnt + 1;
-			else
-				v.stall_cnt := 0;
-				v.state := r.next_state;
-			end if;
-		when release_pads =>
-			wb_write_req(RST_CONFIG_REGISTER_ADDR, X"00000001", fabric_set);
+        when stall =>
+            if r.stall_cnt < r.stall_time then
+                v.stall_cnt := r.stall_cnt + 1;
+            else
+                v.stall_cnt := 0;
+                v.state := r.next_state;
+            end if;
+        when release_pads =>
+            wb_write_req(RST_CONFIG_REGISTER_ADDR, X"00000001", fabric_set);
         when fabric_set =>
            wb_write_req(RST_CONFIG_REGISTER_ADDR, X"00000000", wait_fabric_set); 
         when wait_fabric_set =>
@@ -295,7 +312,7 @@ begin
         when wait_wb_set =>
             skip_nck(FPGA_RST_TIME, prog_done);
         when prog_done =>
-            null;
+            v.self_fw_done := '1';
     end case;
     rin <= v;
 end process;
